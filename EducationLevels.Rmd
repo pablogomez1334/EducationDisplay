@@ -1,0 +1,119 @@
+---
+title: "Education Levels of Given Country"
+author: "Pablo Gomez"
+date: "2022-10-21"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library('dplyr')
+library('ggplot2')
+library('tidyr') #Using to pivot tableset
+library('stringr') #Package used to manipulate strings
+
+
+# Read in Data ------------------------------------------------------------
+
+#Read in electricity data
+electricity <- read.csv('electricity.csv', skip = 4) %>%
+  #removed irrelevant variables
+  select(-c(Indicator.Name,Indicator.Code,X2021,X))%>%
+  #renamed some columns
+  rename(country_name = Country.Name,
+         country_code = Country.Code)%>%
+  #fixed the year column names
+  rename_with(.fn = ~str_replace(.,'X', '')) #Dot is all of the column names
+
+#Read in education data; ditto above functions
+education <- read.csv('secondary_edu.csv',skip = 4) %>%
+  select(-c(Indicator.Name,Indicator.Code,X2021,X))%>%
+  rename(country_name = Country.Name,
+         country_code = Country.Code)%>%
+  rename_with(.fn = ~str_replace(.,'X', ''))
+
+View(education)
+
+
+# Pivot Section -----------------------------------------------------------
+# How to create dataframe manually
+data.frame(country = c('Afghanistan','Afghanistan','Iraq','Iraq','Myanmar','Myanmar'),
+           year = c(1990,1991,1990,1991,1990,1991),
+           education = c(0.50,0.75,0.5,0.66,0.25,0.33))
+
+education <- education %>%
+  pivot_longer(cols = '1960':'2020', 
+               names_to = 'year'
+               ,values_to='education_access')
+
+electricity <- electricity %>%
+  pivot_longer(cols='1960':'2020',
+               names_to = 'year',
+               values_to = 'electricity_access')
+
+
+# Merging Datasets --------------------------------------------------------
+
+head(education)
+head(electricity)
+
+#inner joins
+data <- education %>%
+  left_join(electricity,
+             by = c('country_name'='country_name',
+                    'country_code'='country_code',
+                    'year'='year'))
+
+remove(electricity)
+remove(education)
+
+
+# Visualization -----------------------------------------------------------
+
+viz <- data %>%
+  filter(country_name == 'Aruba')%>%
+  drop_na()
+
+#Visualize my data
+ggplot(data = viz,
+       aes(x = year,
+           y = education_access,
+           group = country_name))+
+  geom_line(color = 'green', size = 5) +
+  geom_point() +
+  theme(axis.ticks = element_blank(),
+        panel.background = element_rect(fill = 'red'))
+
+viz <- data %>%
+  filter(country_name == c('Aruba','Afghanistan','Iraq'))%>%
+  mutate(year = as.integer(year)) %>%
+  drop_na()
+
+#Visualize my data
+viz <- ggplot(data = viz,
+       aes(x = year,
+           y = education_access,
+           group = country_name,
+           color = country_name))+
+  geom_line(size = 2) +
+  geom_point(size = 3) +
+  scale_color_viridis_d()+ #Color themes
+  scale_x_continuous(limits = c(2001,2012),
+                     breaks = seq(2001,2011,2))+ #Sequence in 2's
+ # scale_color_manual(values = c('red', 'blue'))+
+  labs(title = 'Education Levels for Countries',
+        x = 'Year',
+        y = 'Secondary Education Level(%)')+
+  theme(axis.ticks = element_blank(),
+        legend.position = 'top',
+        legend.title = element_blank(),
+        plot.title = element_text(hjust = 0.5))
+
+```
+```{r,echo=FALSE,message=FALSE,warning=FALSE,fig.align='center'}
+viz
+```
+In this display we used various processes in order to see given education levels of a Country, specifically we will see the difference between the Afghanistan and Aruba. In the GGPlot object we display the legend to differentiate both countries using 'group' method. The data is also filtered to display relevant years of data to display. 
